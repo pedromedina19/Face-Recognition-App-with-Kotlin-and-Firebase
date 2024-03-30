@@ -1,6 +1,7 @@
 package com.example.facerecognitionandfirebaseapp.data.repositories
 
 import android.app.Application
+import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import com.example.facerecognitionandfirebaseapp.data.database.MainDatabase
 import com.example.facerecognitionandfirebaseapp.data.model.FaceInfo
@@ -85,6 +86,8 @@ class Repository(private val app: Application, private val db: MainDatabase) {
         return biggestFace
     }
 
-    
+    // Select camera based on lens facing
+    fun cameraSelector(lensFacing: Int): CameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+
 
 }
