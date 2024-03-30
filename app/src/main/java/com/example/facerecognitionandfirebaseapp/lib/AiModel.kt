@@ -1,5 +1,10 @@
 package com.example.facerecognitionandfirebaseapp.lib
 
+import android.content.Context
+import org.tensorflow.lite.Interpreter
+import java.io.FileInputStream
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 
 object AiModel {
@@ -16,5 +21,15 @@ object AiModel {
     const val DEFAULT_SIMILARITY = 0.8f
     private var isRunning = false
 
-    
+    val Context.faceNetInterpreter
+        get(): Interpreter {
+            val fileDescriptor = assets.openFd(FACE_NET_MODEL_PATH)
+            val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+            val fileChannel = inputStream.channel
+            val startOffset = fileDescriptor.startOffset
+            val declaredLength = fileDescriptor.declaredLength
+            val modelBuffer: MappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            return Interpreter(modelBuffer)
+        }
+
 }
