@@ -1,6 +1,8 @@
 package com.example.facerecognitionandfirebaseapp.data.repositories
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Paint
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -13,6 +15,8 @@ import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.FileUtils.writeBitmap
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import com.example.facerecognitionandfirebaseapp.lib.MediaUtils.bitmap
+import com.example.facerecognitionandfirebaseapp.lib.MediaUtils.crop
+import com.example.facerecognitionandfirebaseapp.lib.MediaUtils.flip
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
@@ -118,6 +122,34 @@ class Repository(private val app: Application, private val db: MainDatabase) {
                     .addOnCompleteListener { imageProxy.close() }
             }.onFailure { LOG.e(it, it.message) }
         }
+
+    // Process image for face detection and alignment
+    fun processImage(
+        lensFacing: Int,
+        data: MutableList<Face>,
+        bitmap: Bitmap,
+        paint: Paint
+    ): Result<ProcessedImage> = runCatching {
+        // Set up paint for drawing on the image
+        paint.style = Paint.Style.STROKE
+        val face = biggestFace(data)
+        var frame = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+        var faceBitmap = face?.boundingBox?.let { bitmap.crop(it.left, it.top, it.width(), it.height()).getOrNull() }
+        val canvas = Canvas(frame)
+        canvas.drawBitmap(bitmap, 0f, 0f, null)
+        data.forEach { canvas.drawRect(it.boundingBox, paint) }
+        face?.allLandmarks?.forEach { canvas.drawPoint(it.position.x, it.position.y, paint) }
+        // Flip the image horizontally if it's a front-facing camera
+        if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+            frame = frame.flip(horizontal = true).getOrNull()
+            faceBitmap = faceBitmap?.flip(horizontal = true)?.getOrNull()
+        }
+        // Align face bitmap by facial landmarks
+        faceBitmap = faceBitmap?.let { alignBitmapByLandmarks(bitmap = it, face?.allLandmarks ?: listOf()).getOrNull() }
+        // Return processed image data
+        return@runCatching ProcessedImage(image = bitmap, frame = frame, face = face, trackingId = face?.trackingId, faceBitmap = faceBitmap)
+    }.onFailure { LOG.e(it, it.message) }
+
 
 
 }
