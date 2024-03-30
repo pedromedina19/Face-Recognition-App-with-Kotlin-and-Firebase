@@ -3,6 +3,7 @@ package com.example.facerecognitionandfirebaseapp.data.repositories
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Paint
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -23,9 +24,11 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.face.FaceLandmark
 import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import kotlin.math.atan2
 
 class Repository(private val app: Application, private val db: MainDatabase) {
     // Flow of face information from the database
@@ -150,6 +153,38 @@ class Repository(private val app: Application, private val db: MainDatabase) {
         return@runCatching ProcessedImage(image = bitmap, frame = frame, face = face, trackingId = face?.trackingId, faceBitmap = faceBitmap)
     }.onFailure { LOG.e(it, it.message) }
 
+    // Function to align a bitmap based on facial landmarks
+    fun alignBitmapByLandmarks(bitmap: Bitmap, landmarks: List<FaceLandmark>, noseRatio: Float = 0.4f, eyeDistanceRatio: Float = 0.3f): Result<Bitmap> = runCatching {
+        val leftEye = landmarks.find { it.landmarkType == FaceLandmark.LEFT_EYE }?.position
+        val rightEye = landmarks.find { it.landmarkType == FaceLandmark.RIGHT_EYE }?.position
+        val noseBase = landmarks.find { it.landmarkType == FaceLandmark.NOSE_BASE }?.position
 
+        if (leftEye == null || rightEye == null || noseBase == null) return@runCatching bitmap
+
+        val matrix = Matrix()
+
+        val eyeCenterX = (leftEye.x + rightEye.x) / 2f
+        val eyeCenterY = (leftEye.y + rightEye.y) / 2f
+        val dx = rightEye.x - leftEye.x
+        val dy = rightEye.y - leftEye.y
+        val angle = atan2(dy.toDouble(), dx.toDouble()) * 180 / Math.PI
+
+        matrix.postTranslate(-eyeCenterX, -eyeCenterY)
+        matrix.postRotate(angle.toFloat(), 0f, 0f)
+
+        // Calculate the desired eye distance based on a fixed ratio
+        val desiredEyeDistance = bitmap.width * eyeDistanceRatio
+
+        val scale = desiredEyeDistance / dx
+        matrix.postScale(scale, scale)
+
+        // Calculate the translation to bring the nose base to a fixed position
+        val targetNoseY = bitmap.height * noseRatio
+        val translationY = targetNoseY - noseBase.y * scale
+        matrix.postTranslate(0f, translationY)
+
+        // Apply the transformation matrix to the bitmap
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }.onFailure { LOG.e(it, it.message) }
 
 }
