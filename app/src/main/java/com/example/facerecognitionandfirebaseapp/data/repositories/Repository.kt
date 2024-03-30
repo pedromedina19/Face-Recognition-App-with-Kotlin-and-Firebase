@@ -1,12 +1,14 @@
 package com.example.facerecognitionandfirebaseapp.data.repositories
 
 import android.app.Application
+import androidx.camera.lifecycle.ProcessCameraProvider
 import com.example.facerecognitionandfirebaseapp.data.database.MainDatabase
 import com.example.facerecognitionandfirebaseapp.data.model.FaceInfo
 import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.FileUtils.writeBitmap
 import com.example.facerecognitionandfirebaseapp.lib.LOG
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -53,6 +55,8 @@ class Repository(private val app: Application, private val db: MainDatabase) {
 
     // Executor for camera operations
     val cameraExecutor: Executor by lazy { Executors.newSingleThreadExecutor() }
+    // Future for obtaining the camera provider
+    val cameraProviderFuture: ListenableFuture<ProcessCameraProvider> by lazy { ProcessCameraProvider.getInstance(app) }
     
 
 }
