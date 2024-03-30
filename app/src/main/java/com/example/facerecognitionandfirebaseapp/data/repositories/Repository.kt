@@ -16,6 +16,24 @@ class Repository(private val app: Application, private val db: MainDatabase) {
     fun faceInfo(id: Int): Flow<FaceInfo> = db.dao.face(id)
     // Retrieve a list of faces
     suspend fun faceList(): List<FaceInfo> = db.dao.faceList()
+    // Save face data into the database
+    suspend fun saveFace(image: ProcessedImage) = runCatching {
+        // Retrieve face information from the image
+        val info = image.faceInfo
+        // Get existing face images from the database
+        val images = db.dao.faceList().map { it.processedImage(app) }
+        // Check for various conditions before saving the face
+        if (image.faceBitmap == null) throw Throwable("Face is empty")
+        if (images.find { image.name == it.name } != null) throw Throwable("Name Already Exist.")
+        if ((app.recognizeFace(image, images)?.matchesCriteria == true)) throw Throwable("Face Already Exist.")
+        // Write image files to disk
+        image.faceBitmap.let { app.writeBitmap(info.faceFileName, it).getOrNull() }
+        image.frame?.let { app.writeBitmap(info.frameFileName, it).getOrNull() }
+        image.image?.let { app.writeBitmap(info.imageFileName, it).getOrNull() }
+        // Insert face information into the database
+        db.dao.insert(info)
+    }.onFailure { LOG.e(it, it.message) }
+
     
 
 }
