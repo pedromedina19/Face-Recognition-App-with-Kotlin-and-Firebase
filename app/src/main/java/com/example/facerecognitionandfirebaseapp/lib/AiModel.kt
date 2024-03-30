@@ -12,6 +12,12 @@ import java.nio.channels.FileChannel
 
 
 object AiModel {
+    /*  MobileNet is responsible for extracting features from faces to create embeddings,
+    while FaceNet is used for facial recognition, comparing these embeddings to determine
+    the similarity between faces.
+        An embedding is a numerical representation of a face that captures its distinctive
+    characteristics in a way that facilitates comparisons between different faces*/
+
     private const val FACE_NET_MODEL_PATH = "face_net_512.tflite"
     private const val MOBILE_NET_MODEL_PATH = "mobile_net.tflite"
 
