@@ -9,6 +9,7 @@ import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.FileUtils.writeBitmap
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
@@ -69,5 +70,21 @@ class Repository(private val app: Application, private val db: MainDatabase) {
             .build()
         FaceDetection.getClient(options)
     }
+
+    // Find the biggest face among detected faces
+    fun biggestFace(faces: MutableList<Face>): Face? {
+        var biggestFace: Face? = null
+        var biggestFaceSize = 0
+        for (face in faces) {
+            val faceSize = face.boundingBox.height() * face.boundingBox.width()
+            if (faceSize > biggestFaceSize) {
+                biggestFaceSize = faceSize
+                biggestFace = face
+            }
+        }
+        return biggestFace
+    }
+
+    
 
 }
