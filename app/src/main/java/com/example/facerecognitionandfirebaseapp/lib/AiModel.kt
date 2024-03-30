@@ -42,5 +42,17 @@ object AiModel {
             val modelBuffer: MappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
             return Interpreter(modelBuffer)
         }
+
+    val Context.antiSpoofInterpreter
+        get(): Interpreter {
+            val fileDescriptor = assets.openFd(ANTI_SPOOF_MODEL_PATH)
+            val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+            val fileChannel = inputStream.channel
+            val startOffset = fileDescriptor.startOffset
+            val declaredLength = fileDescriptor.declaredLength
+            val modelBuffer: MappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            return Interpreter(modelBuffer)
+        }
+
     
 }
