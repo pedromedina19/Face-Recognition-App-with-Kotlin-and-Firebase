@@ -14,6 +14,8 @@ class Repository(private val app: Application, private val db: MainDatabase) {
     val faces: Flow<List<FaceInfo>> = db.dao.faces()
     // Retrieve face information by ID
     fun faceInfo(id: Int): Flow<FaceInfo> = db.dao.face(id)
+    // Retrieve a list of faces
+    suspend fun faceList(): List<FaceInfo> = db.dao.faceList()
     
 
 }
