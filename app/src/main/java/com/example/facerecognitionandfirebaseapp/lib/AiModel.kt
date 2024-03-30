@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
+import kotlin.math.sqrt
 
 
 object AiModel {
@@ -116,7 +117,26 @@ object AiModel {
         }
     }
 
+    // Calculate the cosine similarity between two embeddings
+    private fun calculateCosineSimilarity(embeddingBuffer1: ByteBuffer, embeddingBuffer2: ByteBuffer): Result<Float> = runCatching {
+        var dotProduct = 0.0f
+        var norm1 = 0.0f
+        var norm2 = 0.0f
 
+        for (i in 0 until FACE_NET_EMBEDDING_SIZE) {
+            val value1 = embeddingBuffer1.getFloat(i * 4)
+            val value2 = embeddingBuffer2.getFloat(i * 4)
+
+            dotProduct += value1 * value2
+            norm1 += value1 * value1
+            norm2 += value2 * value2
+        }
+
+        norm1 = sqrt(norm1)
+        norm2 = sqrt(norm2)
+
+        dotProduct / (norm1 * norm2)
+    }.onFailure { LOG.e(it, it.message) }
 
 
     // Preprocess the input bitmap for MobileFaceNet
