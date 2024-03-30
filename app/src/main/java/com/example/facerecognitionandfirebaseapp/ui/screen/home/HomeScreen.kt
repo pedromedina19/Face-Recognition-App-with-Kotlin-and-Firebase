@@ -15,9 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-//import com.krishnaZyala.faceRecognition.ui.navigation.HomeHost
+import com.example.facerecognitionandfirebaseapp.ui.navigation.HomeHost
 import com.example.facerecognitionandfirebaseapp.data.model.AppState
-//import com.example.facerecognitionandfirebaseapp.ui.screen.home.HomeScreenState.Companion.defaultBottomBarItem
+import com.example.facerecognitionandfirebaseapp.ui.screen.home.HomeScreenState.Companion.defaultBottomBarItem
 
 @Composable
 fun HomeScreen(appState: AppState, vm: HomeViewModel = hiltViewModel()) {
