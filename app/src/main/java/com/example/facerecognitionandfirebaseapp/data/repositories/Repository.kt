@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
 class Repository(private val app: Application, private val db: MainDatabase) {
     // Flow of face information from the database
     val faces: Flow<List<FaceInfo>> = db.dao.faces()
+    // Retrieve face information by ID
+    fun faceInfo(id: Int): Flow<FaceInfo> = db.dao.face(id)
     
 
 }
