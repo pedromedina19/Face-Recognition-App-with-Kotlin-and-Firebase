@@ -138,6 +138,16 @@ object AiModel {
         dotProduct / (norm1 * norm2)
     }.onFailure { LOG.e(it, it.message) }
 
+    // Calculate the Euclidean distance between two embeddings
+    fun calculateDistance(embeddingBuffer1: ByteBuffer, embeddingBuffer2: ByteBuffer): Result<Float> = runCatching {
+        var sum = 0.0f
+        for (i in 0 until FACE_NET_EMBEDDING_SIZE) {
+            val diff = embeddingBuffer1.getFloat(i * 4) - embeddingBuffer2.getFloat(i * 4)
+            sum += diff * diff
+        }
+        sqrt(sum.toDouble()).toFloat()
+    }.onFailure { LOG.e(it, it.message) }
+
 
     // Preprocess the input bitmap for MobileFaceNet
     fun preprocessBitmap(bitmap: Bitmap, size: Int, isModelQuantized: Boolean = false): Result<ByteBuffer> = runCatching {
