@@ -34,6 +34,16 @@ class Repository(private val app: Application, private val db: MainDatabase) {
         db.dao.insert(info)
     }.onFailure { LOG.e(it, it.message) }
 
+    // Delete a face from the database
+    suspend fun deleteFace(face: FaceInfo) = runCatching {
+        if (face.id == null) throw Throwable("Invalid Face Id")
+        // Delete face from database and corresponding image files
+        db.dao.delete(face.id)
+        app.deleteFile(face.faceFileName)
+        app.deleteFile(face.frameFileName)
+        app.deleteFile(face.imageFileName)
+    }.onFailure { LOG.e(it, it.message) }
+
     
 
 }
