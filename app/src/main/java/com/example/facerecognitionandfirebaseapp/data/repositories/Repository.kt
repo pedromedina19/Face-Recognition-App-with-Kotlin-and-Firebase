@@ -44,6 +44,9 @@ class Repository(private val app: Application, private val db: MainDatabase) {
         app.deleteFile(face.imageFileName)
     }.onFailure { LOG.e(it, it.message) }
 
-    
+    // Clear all faces from the database
+    suspend fun clearAllFaces() = runCatching {
+        db.dao.clear()
+    }.onFailure { LOG.e(it, it.message) }
 
 }
