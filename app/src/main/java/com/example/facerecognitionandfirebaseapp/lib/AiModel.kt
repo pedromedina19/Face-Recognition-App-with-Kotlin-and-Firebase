@@ -1,8 +1,11 @@
 package com.example.facerecognitionandfirebaseapp.lib
 
 import android.content.Context
+import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
@@ -54,5 +57,17 @@ object AiModel {
             return Interpreter(modelBuffer)
         }
 
+    fun Context.mobileNet(face: ProcessedImage, interpreter: Interpreter = mobileNetInterpreter): Result<Float> = runCatching {
+        // Preprocess the reference bitmap
+        val referenceInput = face.faceBitmap?.let { bitmap -> preprocessBitmap(bitmap, MOBILE_NET_IMAGE_SIZE).getOrNull()?.let { arrayOf(it) } }
+            ?: throw Throwable("Unable to preprocess Bitmap")
+        // Allocate output buffer for the reference embedding
+        val referenceOutputBuffer = ByteBuffer.allocateDirect(4).apply { order(ByteOrder.nativeOrder()) }
+        val referenceOutputs: MutableMap<Int, Any> = mutableMapOf(0 to referenceOutputBuffer)
+        interpreter.runForMultipleInputsOutputs(referenceInput, referenceOutputs)
+        referenceOutputBuffer.rewind()
+        val data = referenceOutputBuffer.float
+        data
+    }.onFailure { LOG.e(it, it.message) }
     
 }

@@ -5,6 +5,7 @@ import androidx.annotation.Keep
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceLandmark
 import com.example.facerecognitionandfirebaseapp.app.Utils
+import com.example.facerecognitionandfirebaseapp.lib.AiModel.DEFAULT_SIMILARITY
 import java.nio.ByteBuffer
 
 @Keep
@@ -24,6 +25,7 @@ data class ProcessedImage(
     val timestamp: String = Utils.timestamp(),
     val time: Long = System.currentTimeMillis(),
 ) {
+    val matchesCriteria get():Boolean = (similarity ?: 0F) > DEFAULT_SIMILARITY
     val faceInfo
         get():FaceInfo = FaceInfo(
             name = name,
