@@ -8,6 +8,8 @@ import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.FileUtils.writeBitmap
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import kotlinx.coroutines.flow.Flow
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 class Repository(private val app: Application, private val db: MainDatabase) {
     // Flow of face information from the database
@@ -48,5 +50,9 @@ class Repository(private val app: Application, private val db: MainDatabase) {
     suspend fun clearAllFaces() = runCatching {
         db.dao.clear()
     }.onFailure { LOG.e(it, it.message) }
+
+    // Executor for camera operations
+    val cameraExecutor: Executor by lazy { Executors.newSingleThreadExecutor() }
+    
 
 }
