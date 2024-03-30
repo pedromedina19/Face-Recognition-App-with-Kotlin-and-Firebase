@@ -65,6 +65,57 @@ object AiModel {
         data
     }.onFailure { LOG.e(it, it.message) }
 
+    fun Context.recognizeFace(face: ProcessedImage, faces: List<ProcessedImage>, interpreter: Interpreter = faceNetInterpreter): ProcessedImage? {
+        synchronized(this) {
+            if (isRunning) return@synchronized
+            isRunning = true
+        }
+        return try {
+            // Preprocess the reference bitmap
+            val referenceInput =
+                face.faceBitmap?.let { bitmap -> preprocessBitmap(bitmap, FACE_NET_IMAGE_SIZE).getOrNull()?.let { arrayOf(it) } }
+                    ?: throw Throwable("Unable to preprocess Bitmap")
+            // Allocate output buffer for the reference embedding
+            val referenceOutputBuffer = ByteBuffer.allocateDirect(FACE_NET_EMBEDDING_SIZE * 4).apply { order(ByteOrder.nativeOrder()) }
+            // Run inference for the reference bitmap
+            val referenceOutputs: MutableMap<Int, Any> = mutableMapOf(0 to referenceOutputBuffer)
+            interpreter.runForMultipleInputsOutputs(referenceInput, referenceOutputs)
+            // Process test bitmaps
+            var image: ProcessedImage? = null
+            var minDistance = Float.MAX_VALUE
+
+            for (data in faces) {
+                // Preprocess the test face
+                val testInputBuffer =
+                    data.faceBitmap?.let { preprocessBitmap(it, FACE_NET_IMAGE_SIZE).getOrNull() } ?: throw Throwable("Unable to preprocess Test Bitmap")
+                // Allocate output buffer for the test embedding
+                val testOutputBuffer = ByteBuffer.allocateDirect(FACE_NET_EMBEDDING_SIZE * 4).apply { order(ByteOrder.nativeOrder()) }
+                // Run inference for the test face
+                val testInputs = arrayOf(testInputBuffer)
+                val testOutputs: MutableMap<Int, Any> = mutableMapOf(0 to testOutputBuffer)
+                interpreter.runForMultipleInputsOutputs(testInputs, testOutputs)
+                // Calculate the Euclidean distance between the reference and test embeddings
+                val distance = calculateDistance(referenceOutputBuffer, testOutputBuffer).getOrNull() ?: throw Throwable("Unable to calculate Distance")
+                // Calculate the Cosine Similarity between the reference and test embeddings
+                val similarity =
+                    calculateCosineSimilarity(referenceOutputBuffer, testOutputBuffer).getOrNull() ?: throw Throwable("Unable to calculate Cosine Similarity")
+                // Check if the distance is the smallest so far
+                if (distance < minDistance) {
+                    minDistance = distance
+                    image = data.copy(distance = distance, similarity = similarity)
+                }
+            }
+            // Cleanup
+            interpreter.close()
+            image
+        } catch (th: Throwable) {
+            LOG.e(th, th.message)
+            null
+        } finally {
+            synchronized(this) { isRunning = false }
+        }
+    }
+
 
 
 
