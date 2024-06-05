@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "835700564063",
+    "firebase_url": "https://pi-9-631e7-default-rtdb.firebaseio.com",
+    "project_id": "pi-9-631e7",
+    "storage_bucket": "pi-9-631e7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835700564063:android:a9d7b82718f1d7590c3bea",
+        "android_client_info": {
+          "package_name": "app_reconhecimento.pi09"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlPhCotJqLGxGcgH0UEOD_M2_QO1fhJuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835700564063:android:d55ffab27edc97600c3bea",
+        "android_client_info": {
+          "package_name": "com.example.facerecognitionandfirebaseapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlPhCotJqLGxGcgH0UEOD_M2_QO1fhJuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

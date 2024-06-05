@@ -3,6 +3,7 @@ package com.example.facerecognitionandfirebaseapp.ui.screen.addFace
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
+import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -12,19 +13,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.facerecognitionandfirebaseapp.data.model.FaceData
 import com.example.facerecognitionandfirebaseapp.data.repositories.Repository
 import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.mobileNet
 import com.example.facerecognitionandfirebaseapp.lib.LOG
+import com.google.firebase.Firebase
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
 class AddFaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
+    //val database = FirebaseDatabase.getInstance()
+    val facesRef = Firebase.database.reference.child("faces")
+    //val facesRef = database.getReference("faces")
     lateinit var snackbarHost: SnackbarHostState
     val cameraProvider: ProcessCameraProvider by lazy { repo.cameraProviderFuture.get() }
     val showSaveDialog: MutableState<Boolean> = mutableStateOf(false)
@@ -79,6 +88,13 @@ class AddFaceViewModel @Inject constructor(private val repo: Repository) : ViewM
         runCatching {
             hideSaveDialog()
             val error = withContext(Dispatchers.IO) { repo.saveFace(image.value).exceptionOrNull() }
+            val aux_face = FaceData(
+                image.value.id,
+                image.value.name,
+                image.value.timestamp
+            )
+            facesRef.child(image.value.id.toString()).setValue(aux_face)
+            Log.i("Teste", image.value.id.toString())
             snackbarHost.showSnackbar(error?.message ?: "Rosto salvo com sucesso")
         }.onFailure { LOG.e(it, it.message) }
     }
