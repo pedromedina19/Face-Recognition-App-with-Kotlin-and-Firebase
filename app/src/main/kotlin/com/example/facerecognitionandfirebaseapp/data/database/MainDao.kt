@@ -13,7 +13,7 @@ interface MainDao {
     suspend fun delete(id: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(data: FaceInfo)
+    suspend fun insert(data: FaceInfo): Long
 
     @Query("SELECT * FROM FaceInfo WHERE id = :id")
     fun face(id: Int): Flow<FaceInfo>
@@ -21,7 +21,7 @@ interface MainDao {
     @Query("SELECT * FROM FaceInfo ")
     fun faces(): Flow<List<FaceInfo>>
 
-    @Query("SELECT * FROM FaceInfo ")
+    @Query("SELECT * FROM FaceInfo")
     suspend fun faceList(): List<FaceInfo>
 
 }

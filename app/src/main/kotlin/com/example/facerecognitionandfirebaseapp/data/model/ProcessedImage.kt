@@ -2,6 +2,8 @@ package com.example.facerecognitionandfirebaseapp.data.model
 
 import android.graphics.Bitmap
 import androidx.annotation.Keep
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceLandmark
 import com.example.facerecognitionandfirebaseapp.app.Utils
@@ -9,6 +11,7 @@ import com.example.facerecognitionandfirebaseapp.lib.AiModel.DEFAULT_SIMILARITY
 import java.nio.ByteBuffer
 
 @Keep
+@Entity
 data class ProcessedImage(
     var id: Int? = null,
     var name: String = "",

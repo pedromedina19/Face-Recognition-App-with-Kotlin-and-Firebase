@@ -99,6 +99,7 @@ class AddFaceViewModel @Inject constructor(private val repo: Repository) : ViewM
         }.onFailure { LOG.e(it, it.message) }
     }
 
+
     fun showSaveDialog() = runCatching {
         showSaveDialog.value = true
         cameraProvider.unbindAll()

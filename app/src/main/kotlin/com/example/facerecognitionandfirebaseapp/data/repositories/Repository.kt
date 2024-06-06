@@ -52,8 +52,10 @@ class Repository(private val app: Application, private val db: MainDatabase) {
         image.frame?.let { app.writeBitmap(info.frameFileName, it).getOrNull() }
         image.image?.let { app.writeBitmap(info.imageFileName, it).getOrNull() }
         // Insert face information into the database
-        db.dao.insert(info)
+        val newId = db.dao.insert(info)
+        image.id = newId.toInt() // Assign the generated ID to the image
     }.onFailure { LOG.e(it, it.message) }
+
 
     // Delete a face from the database
     suspend fun deleteFace(face: FaceInfo) = runCatching {
