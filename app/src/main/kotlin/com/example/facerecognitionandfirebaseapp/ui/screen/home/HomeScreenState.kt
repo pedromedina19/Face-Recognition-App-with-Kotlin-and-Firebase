@@ -26,6 +26,7 @@ data class HomeScreenState(
             defaultBottomBarItem,
             NavBarItem(Routes.AddFace, R.drawable.ic_add_face),
             NavBarItem(Routes.Faces, R.drawable.ic_faces),
+            NavBarItem(Routes.Logs, R.drawable.ic_settings)
 //        NavBarItem(Routes.Settings, R.drawable.ic_settings),
         )
     }

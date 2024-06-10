@@ -33,11 +33,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavHostController
 import com.example.facerecognitionandfirebaseapp.data.model.AppState
+import com.example.facerecognitionandfirebaseapp.data.model.FaceData
 import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.ui.composable.FaceAnalytics
 import com.example.facerecognitionandfirebaseapp.ui.composable.FaceView
 import com.example.facerecognitionandfirebaseapp.ui.composable.FrameView
 import com.example.facerecognitionandfirebaseapp.ui.theme.spacing
+import com.google.firebase.Firebase
+import com.google.firebase.database.database
 
 @Composable
 fun RecogniseFaceScreen(appState: AppState, host: NavHostController, vm: RecogniseFaceViewModel = hiltViewModel()) {
@@ -121,8 +124,21 @@ private fun RecogniseFaceDialog(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.tertiaryContainer)
                 .padding(vertical = MaterialTheme.spacing.Small)
-                .clickable(onClick = onCancel)
+                .clickable(onClick = {
+                    saveLogToFirebase(FaceData(
+                        recognised.copy(face = frame.face).id,
+                        recognised.copy(face = frame.face).name,
+                        recognised.copy(face = frame.face).timestamp
+                    ))
+                    onCancel()
+                })
                 .fillMaxWidth()
         )
     }
+}
+
+// Função para salvar o log
+fun saveLogToFirebase(log: FaceData) {
+    val logsRef = Firebase.database.reference.child("logs")
+    logsRef.push().setValue(log)
 }

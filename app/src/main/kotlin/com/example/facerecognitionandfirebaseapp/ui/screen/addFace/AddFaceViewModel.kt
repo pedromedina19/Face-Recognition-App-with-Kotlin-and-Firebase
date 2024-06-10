@@ -19,21 +19,17 @@ import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.mobileNet
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import com.google.firebase.Firebase
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
 class AddFaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
-    //val database = FirebaseDatabase.getInstance()
     val facesRef = Firebase.database.reference.child("faces")
-    //val facesRef = database.getReference("faces")
     lateinit var snackbarHost: SnackbarHostState
     val cameraProvider: ProcessCameraProvider by lazy { repo.cameraProviderFuture.get() }
     val showSaveDialog: MutableState<Boolean> = mutableStateOf(false)
@@ -105,6 +101,6 @@ class AddFaceViewModel @Inject constructor(private val repo: Repository) : ViewM
         cameraProvider.unbindAll()
     }.onFailure { LOG.e(it, it.message) }
 
-    fun hideSaveDialog() = runCatching { showSaveDialog.value = false }.onFailure { LOG.e(it, it.message) }
+    fun hideSaveDialog() = runCatching {showSaveDialog.value = false }.onFailure { LOG.e(it, it.message) }
 
 }

@@ -7,6 +7,8 @@ import com.example.facerecognitionandfirebaseapp.data.repositories.Repository
 import com.example.facerecognitionandfirebaseapp.data.model.AppState
 import com.example.facerecognitionandfirebaseapp.data.model.FaceInfo
 import com.example.facerecognitionandfirebaseapp.lib.LOG
+import com.google.firebase.Firebase
+import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +17,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
+    val facesRef = Firebase.database.reference.child("faces")
     lateinit var homeHost: NavHostController
     lateinit var appState: AppState
     val faces: Flow<List<FaceInfo>> = repo.faces
@@ -34,6 +37,7 @@ class FaceViewModel @Inject constructor(private val repo: Repository) : ViewMode
     fun onDeleteFace(face: FaceInfo) = viewModelScope.launch(Dispatchers.IO) {
         runCatching {
             repo.deleteFace(face).getOrNull()
+            facesRef.child(face.id.toString()).removeValue()
             LOG.d("Deleted Face \t:\t$face")
         }.onFailure { LOG.e(it, it.message) }
     }

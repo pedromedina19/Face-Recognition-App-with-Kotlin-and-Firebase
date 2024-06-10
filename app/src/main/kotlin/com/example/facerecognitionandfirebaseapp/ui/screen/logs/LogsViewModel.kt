@@ -1,4 +1,4 @@
-package com.example.facerecognitionandfirebaseapp.ui.screen.recogniseFace
+package com.example.facerecognitionandfirebaseapp.ui.screen.logs
 
 import android.content.Context
 import android.graphics.Color
@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LifecycleOwner
@@ -16,82 +17,92 @@ import com.example.facerecognitionandfirebaseapp.data.model.FaceData
 import com.example.facerecognitionandfirebaseapp.data.repositories.Repository
 import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.mobileNet
-import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import com.google.firebase.Firebase
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
-class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
-    val lockref = Firebase.database.getReference("shouldOpenLock")
-    lateinit var imageAnalysis: ImageAnalysis
-    lateinit var lifecycleOwner: LifecycleOwner
+class LogsViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
+    val facesRef = Firebase.database.reference.child("faces")
+    lateinit var snackbarHost: SnackbarHostState
     val cameraProvider: ProcessCameraProvider by lazy { repo.cameraProviderFuture.get() }
-    var images: List<ProcessedImage> = listOf()
+    val showSaveDialog: MutableState<Boolean> = mutableStateOf(false)
     val image: MutableState<ProcessedImage> = mutableStateOf(ProcessedImage())
-    val showDialog: MutableState<Boolean> = mutableStateOf(false)
-    var recognizedFace: MutableState<ProcessedImage?> = mutableStateOf(null)
     val lensFacing: MutableState<Int> = mutableStateOf(CameraSelector.LENS_FACING_FRONT)
     val cameraSelector get(): CameraSelector = repo.cameraSelector(lensFacing.value)
     val paint = Paint().apply {
         strokeWidth = 3f
-        color = Color.BLUE
+        color = Color.GREEN
     }
-    val Context.getImageAnalysis
+    val Context.imageAnalysis
         get() = repo.imageAnalysis(lensFacing.value, paint) { result ->
             runCatching {
                 val data = result.getOrNull() ?: return@runCatching
                 data.landmarks = data.face?.allLandmarks ?: listOf()
+                data.spoof = mobileNet(data).getOrNull()
                 image.value = data
-                recognizedFace.value = recognizeFace(data, images)
-                recognizedFace.value = recognizedFace.value?.copy(spoof = mobileNet(data).getOrNull())
-
             }.onFailure { LOG.e(it, it.message) }
         }
 
-    fun onCompose(context: Context, owner: LifecycleOwner) = viewModelScope.launch {
+    fun onCompose(context: Context, lifecycleOwner: LifecycleOwner, snackbar: SnackbarHostState) = viewModelScope.launch {
         runCatching {
-            lifecycleOwner = owner
-            imageAnalysis = context.getImageAnalysis
-            images = withContext(Dispatchers.IO) { repo.faceList().map { it.processedImage(context) } }
-            bindCamera()
+            snackbarHost = snackbar
+            if (showSaveDialog.value) return@runCatching
+            bindCamera(lifecycleOwner, context.imageAnalysis)
             delay(1000)
-            bindCamera()
-            LOG.d("Recognise Face Screen Composed")
+            bindCamera(lifecycleOwner, context.imageAnalysis)
+            LOG.d("Add Face Screen Composed")
         }.onFailure { LOG.e(it, it.message) }
     }
 
     fun onDispose() = runCatching {
         cameraProvider.unbindAll()
-        LOG.d("Recognise Face Screen Disposed")
+        LOG.d("Add Face Screen Disposed")
     }.onFailure { LOG.e(it, it.message) }
+
 
     fun onFlipCamera() = runCatching {
         lensFacing.value = if (lensFacing.value == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         LOG.d("Camera Flipped lensFacing\t:\t${lensFacing.value}")
     }.onFailure { LOG.e(it, it.message) }
 
-    fun bindCamera() = runCatching {
+    fun bindCamera(lifecycleOwner: LifecycleOwner, imageAnalysis: ImageAnalysis) = runCatching {
         cameraProvider.unbindAll()
         cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageAnalysis)
         LOG.d("Camera is bound to lifecycle.")
     }.onFailure { LOG.e(it, it.message) }
 
-    fun showDialog() = runCatching {
-        showDialog.value = true
-        lockref.setValue(true)
+    fun onNameChange(value: String) = runCatching { image.value = image.value.copy(name = value) }.onFailure { LOG.e(it, it.message) }
+
+    fun saveFace() = viewModelScope.launch {
+        runCatching {
+            hideSaveDialog()
+            val error = withContext(Dispatchers.IO) { repo.saveFace(image.value).exceptionOrNull() }
+            val aux_face = FaceData(
+                image.value.id,
+                image.value.name,
+                image.value.timestamp
+            )
+            facesRef.child(image.value.id.toString()).setValue(aux_face)
+            Log.i("Teste", image.value.id.toString())
+            snackbarHost.showSnackbar(error?.message ?: "Rosto salvo com sucesso")
+        }.onFailure { LOG.e(it, it.message) }
+    }
+
+
+    fun showSaveDialog() = runCatching {
+        showSaveDialog.value = true
         cameraProvider.unbindAll()
     }.onFailure { LOG.e(it, it.message) }
 
-    fun hideDialog() = runCatching {
-        showDialog.value = false
-        lockref.setValue(false)
-        bindCamera()
-    }.onFailure { LOG.e(it, it.message) }
+    fun hideSaveDialog() = runCatching { showSaveDialog.value = false }.onFailure { LOG.e(it, it.message) }
+
 }
