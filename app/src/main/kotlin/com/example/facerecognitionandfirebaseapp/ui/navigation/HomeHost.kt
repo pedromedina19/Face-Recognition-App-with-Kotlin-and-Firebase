@@ -25,6 +25,7 @@ fun HomeHost(
 
 fun homeNavGraphBuilder(state: AppState, host: NavHostController): NavGraphBuilder.() -> Unit = {
     Routes.Faces(this) { FacesScreen(state, host) }
+    Routes.Recognise(this) { RecogniseFaceScreen(state, host)}
     Routes.AddFace(this) { AddFaceScreen(state, host) }
     Routes.Lock(this) { LockScreen(state, host) }
     Routes.Logs(this){ LogsScreen(state , host)}
