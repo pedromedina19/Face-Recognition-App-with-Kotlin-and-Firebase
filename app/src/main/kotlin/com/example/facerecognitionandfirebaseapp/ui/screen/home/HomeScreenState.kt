@@ -21,7 +21,7 @@ data class HomeScreenState(
 
     companion object {
         val defaultPermissions: MutableMap<PermissionProvider, Boolean> = mutableMapOf(Permission.Camera to false)
-        val defaultBottomBarItem: NavBarItem = NavBarItem(Routes.Recognise, R.drawable.ic_home)
+        val defaultBottomBarItem: NavBarItem = NavBarItem(Routes.Lock, R.drawable.ic_home)
         val defaultBottomBarItems: List<NavBarItem> = listOf(
             defaultBottomBarItem,
             NavBarItem(Routes.AddFace, R.drawable.ic_add_face),

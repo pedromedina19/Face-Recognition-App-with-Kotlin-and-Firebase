@@ -11,10 +11,17 @@ import androidx.navigation.NavHostController
 import com.example.facerecognitionandfirebaseapp.data.model.AppState
 import com.example.facerecognitionandfirebaseapp.data.model.FaceData
 import com.example.facerecognitionandfirebaseapp.ui.theme.spacing
+import com.google.firebase.Firebase
 import com.google.firebase.database.*
 
 @Composable
 fun LogsScreen(appState: AppState, host: NavHostController) {
+    val logsChild = Firebase.database.reference.child("logs")
+    val doorIsOpen = Firebase.database.getReference("doorIsOpen").toString()
+    if (doorIsOpen == "false") {
+        val log = FaceData(0, "Tranca Fechada", System.currentTimeMillis().toString())
+        logsChild.push().setValue(log)
+    }
     val logsList = remember { mutableStateListOf<FaceData>() }
     val logsRef = FirebaseDatabase.getInstance().getReference("logs")
 
