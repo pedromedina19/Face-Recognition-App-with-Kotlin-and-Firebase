@@ -89,9 +89,10 @@ fun RecogniseFaceScreen(appState: AppState, host: NavHostController, vm: Recogni
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
         content = content
     )
-    if (showDialog) recognizedFace?.let { RecogniseFaceDialog(currentFace, it, onCancel = vm::hideDialog) }
-
+    if (showDialog) recognizedFace?.let { RecogniseFaceDialog(currentFace, it, onCancel = { vm.hideDialog(it, currentFace) }) }
 }
+
+
 
 @Composable
 private fun RecogniseFaceDialog(
@@ -124,21 +125,11 @@ private fun RecogniseFaceDialog(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.tertiaryContainer)
                 .padding(vertical = MaterialTheme.spacing.Small)
-                .clickable(onClick = {
-                    saveLogToFirebase(FaceData(
-                        recognised.copy(face = frame.face).id,
-                        recognised.copy(face = frame.face).name,
-                        recognised.copy(face = frame.face).timestamp
-                    ))
-                    onCancel()
-                })
+                .clickable(onClick = onCancel)
                 .fillMaxWidth()
         )
     }
 }
 
-// Função para salvar o log
-fun saveLogToFirebase(log: FaceData) {
-    val logsRef = Firebase.database.reference.child("logs")
-    logsRef.push().setValue(log)
-}
+
+

@@ -19,19 +19,33 @@ import com.example.facerecognitionandfirebaseapp.lib.AiModel.mobileNet
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.LOG
 import com.google.firebase.Firebase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @HiltViewModel
 class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
     val lockref = Firebase.database.getReference("shouldOpenLock")
     lateinit var imageAnalysis: ImageAnalysis
     lateinit var lifecycleOwner: LifecycleOwner
+    private val _doorIsOpen = MutableStateFlow(false)
+    val doorIsOpen: StateFlow<Boolean> get() = _doorIsOpen
+    private val doorIsOpenRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("doorIsOpen")
+    private var wasDoorOpen: Boolean = false
     val cameraProvider: ProcessCameraProvider by lazy { repo.cameraProviderFuture.get() }
     var images: List<ProcessedImage> = listOf()
     val image: MutableState<ProcessedImage> = mutableStateOf(ProcessedImage())
@@ -43,6 +57,29 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
         strokeWidth = 3f
         color = Color.BLUE
     }
+
+    init {
+        // Adicionar listener para mudanças em doorIsOpen
+        doorIsOpenRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val isOpen = snapshot.getValue(Boolean::class.java) ?: false
+                if (!isOpen && wasDoorOpen) {
+                    val timestamp = System.currentTimeMillis()
+                    val formattedTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(
+                        Date(timestamp)
+                    )
+                    saveLogToFirebase(FaceData(0, "Tranca Fechada", formattedTimestamp))
+                }
+                wasDoorOpen = isOpen
+                _doorIsOpen.value = isOpen
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                println("Erro ao ler estado da porta: ${error.message}")
+            }
+        })
+    }
+
     val Context.getImageAnalysis
         get() = repo.imageAnalysis(lensFacing.value, paint) { result ->
             runCatching {
@@ -84,14 +121,26 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
     }.onFailure { LOG.e(it, it.message) }
 
     fun showDialog() = runCatching {
+        wasDoorOpen = true
         showDialog.value = true
         lockref.setValue(true)
         cameraProvider.unbindAll()
     }.onFailure { LOG.e(it, it.message) }
 
-    fun hideDialog() = runCatching {
+    fun hideDialog(recognised: ProcessedImage, frame: ProcessedImage) = runCatching {
+        saveLogToFirebase(FaceData(
+            recognised.copy(face = frame.face).id,
+            recognised.copy(face = frame.face).name,
+            recognised.copy(face = frame.face).timestamp
+        ))
         showDialog.value = false
         lockref.setValue(false)
         bindCamera()
     }.onFailure { LOG.e(it, it.message) }
+
+    private fun saveLogToFirebase(log: FaceData) {
+        val logsRef = Firebase.database.reference.child("logs")
+        logsRef.push().setValue(log)
+    }
 }
+
