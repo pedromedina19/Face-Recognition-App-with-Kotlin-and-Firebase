@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">https://4775-2804-1e68-c211-9e22-20c2-27f7-b5c5-7c4e.ngrok-free.app</domain>
+    </domain-config>
+</network-security-config>

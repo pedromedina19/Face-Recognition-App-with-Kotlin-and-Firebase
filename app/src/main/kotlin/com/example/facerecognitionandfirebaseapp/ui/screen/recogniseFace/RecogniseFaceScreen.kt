@@ -38,6 +38,7 @@ import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
 import com.example.facerecognitionandfirebaseapp.ui.composable.FaceAnalytics
 import com.example.facerecognitionandfirebaseapp.ui.composable.FaceView
 import com.example.facerecognitionandfirebaseapp.ui.composable.FrameView
+import com.example.facerecognitionandfirebaseapp.ui.navigation.Routes
 import com.example.facerecognitionandfirebaseapp.ui.theme.spacing
 import com.google.firebase.Firebase
 import com.google.firebase.database.database
@@ -50,10 +51,16 @@ fun RecogniseFaceScreen(appState: AppState, host: NavHostController, vm: Recogni
     val recognizedFace: ProcessedImage? by vm.recognizedFace
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lensFacing) {
-        vm.onCompose(appState.activity, lifecycleOwner)
+        vm.onCompose(appState.activity, lifecycleOwner) {
+            // Timeout callback
+            vm.sendAlertNotification()
+            host.navigate("lockscreen")
+        }
         onDispose { vm.onDispose() }
     }
-    LaunchedEffect(recognizedFace) { if (recognizedFace?.matchesCriteria == true) vm.showDialog() }
+    LaunchedEffect(recognizedFace) {
+        if (recognizedFace?.matchesCriteria == true) vm.showDialog()
+    }
     val content: @Composable (PaddingValues) -> Unit = { padding ->
         Column(
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
@@ -89,10 +96,10 @@ fun RecogniseFaceScreen(appState: AppState, host: NavHostController, vm: Recogni
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
         content = content
     )
-    if (showDialog) recognizedFace?.let { RecogniseFaceDialog(currentFace, it, onCancel = { vm.hideDialog(it, currentFace) }) }
+    //if (showDialog) recognizedFace?.let { RecogniseFaceDialog(currentFace, it,host = host ,onCancel = vm::hideDialog) }
+    if (showDialog) recognizedFace?.let { RecogniseFaceDialog(currentFace, it, host = host, onCancel = { vm.hideDialog(it, currentFace) }) }
+
 }
-
-
 
 @Composable
 private fun RecogniseFaceDialog(
@@ -100,6 +107,7 @@ private fun RecogniseFaceDialog(
     recognised: ProcessedImage,
     modifier: Modifier = Modifier,
     title: String = "Rosto reconhecido",
+    host: NavHostController,
     onCancel: () -> Unit,
 ) = Dialog(onCancel) {
     Card(modifier = modifier) {
@@ -125,11 +133,12 @@ private fun RecogniseFaceDialog(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.tertiaryContainer)
                 .padding(vertical = MaterialTheme.spacing.Small)
-                .clickable(onClick = onCancel)
+                .clickable(onClick = {
+                    onCancel()
+                    host.navigate(Routes.Lock.path)
+                })
                 .fillMaxWidth()
         )
     }
 }
-
-
 

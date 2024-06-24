@@ -3,7 +3,6 @@ package com.example.facerecognitionandfirebaseapp.ui.screen.recogniseFace
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
-import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -13,18 +12,13 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.facerecognitionandfirebaseapp.data.model.FaceData
-import com.example.facerecognitionandfirebaseapp.data.repositories.Repository
 import com.example.facerecognitionandfirebaseapp.data.model.ProcessedImage
+import com.example.facerecognitionandfirebaseapp.data.repositories.Repository
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.mobileNet
 import com.example.facerecognitionandfirebaseapp.lib.AiModel.recognizeFace
 import com.example.facerecognitionandfirebaseapp.lib.LOG
-import com.google.firebase.Firebase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.database
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -32,10 +26,23 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.Job
 
 @HiltViewModel
 class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) : ViewModel() {
@@ -57,7 +64,7 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
         strokeWidth = 3f
         color = Color.BLUE
     }
-
+    private var recognitionTimeoutJob: Job? = null
     init {
         // Adicionar listener para mudanças em doorIsOpen
         doorIsOpenRef.addValueEventListener(object : ValueEventListener {
@@ -80,6 +87,9 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
         })
     }
 
+    private val lastAlertNotificationTime = AtomicLong(0)
+    private val alertNotificationInterval = 30000 // Intervalo de 30 segundos
+
     val Context.getImageAnalysis
         get() = repo.imageAnalysis(lensFacing.value, paint) { result ->
             runCatching {
@@ -89,15 +99,26 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
                 recognizedFace.value = recognizeFace(data, images)
                 recognizedFace.value = recognizedFace.value?.copy(spoof = mobileNet(data).getOrNull())
 
+                recognizedFace.value?.let { face ->
+                    if (face.similarity!! >= 0.80) {
+                        // Cancelar o job de timeout se o rosto for reconhecido
+                        recognitionTimeoutJob?.cancel()
+                        // Enviar notificação quando o rosto for reconhecido
+                        sendNotification(face.name)
+                        showDialog()
+                    }
+                }
+
             }.onFailure { LOG.e(it, it.message) }
         }
 
-    fun onCompose(context: Context, owner: LifecycleOwner) = viewModelScope.launch {
+    fun onCompose(context: Context, owner: LifecycleOwner, onTimeout: () -> Unit) = viewModelScope.launch {
         runCatching {
             lifecycleOwner = owner
             imageAnalysis = context.getImageAnalysis
             images = withContext(Dispatchers.IO) { repo.faceList().map { it.processedImage(context) } }
             bindCamera()
+            startRecognitionTimeout(onTimeout)
             delay(1000)
             bindCamera()
             LOG.d("Recognise Face Screen Composed")
@@ -110,7 +131,7 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
     }.onFailure { LOG.e(it, it.message) }
 
     fun onFlipCamera() = runCatching {
-        lensFacing.value = if (lensFacing.value == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+        lensFacing.value = if (lensFacing.value == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_FRONT
         LOG.d("Camera Flipped lensFacing\t:\t${lensFacing.value}")
     }.onFailure { LOG.e(it, it.message) }
 
@@ -142,5 +163,69 @@ class RecogniseFaceViewModel @Inject constructor(private val repo: Repository) :
         val logsRef = Firebase.database.reference.child("logs")
         logsRef.push().setValue(log)
     }
-}
 
+    private fun sendNotification(recognizedPersonName: String) {
+        val client = OkHttpClient()
+        val url = "https://4775-2804-1e68-c211-9e22-20c2-27f7-b5c5-7c4e.ngrok-free.app/sendNotification"
+
+        val json = JSONObject()
+        json.put("name", recognizedPersonName)
+
+        val requestBody = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        val request = Request.Builder()
+            .url(url)
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                e.printStackTrace()
+                // Tratar o erro de falha na solicitação
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.body?.let {
+                    println(it.string())
+                } ?: run {
+                    // Tratar resposta nula
+                }
+            }
+        })
+    }
+
+    fun sendAlertNotification() {
+        val client = OkHttpClient()
+        val url = "https://4775-2804-1e68-c211-9e22-20c2-27f7-b5c5-7c4e.ngrok-free.app/sendAlertNotification"
+
+        val json = JSONObject()
+        json.put("message", "ATENÇÃO!! Tentativa de abertura realizada!")
+
+        val requestBody = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        val request = Request.Builder()
+            .url(url)
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                e.printStackTrace()
+                // Tratar o erro de falha na solicitação
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.body?.let {
+                    println(it.string())
+                } ?: run {
+                    // Tratar resposta nula
+                }
+            }
+        })
+    }
+
+    private fun startRecognitionTimeout(onTimeout: () -> Unit) {
+        recognitionTimeoutJob = viewModelScope.launch {
+            delay(10000) // Espera 10 segundos
+            onTimeout()
+        }
+    }
+}

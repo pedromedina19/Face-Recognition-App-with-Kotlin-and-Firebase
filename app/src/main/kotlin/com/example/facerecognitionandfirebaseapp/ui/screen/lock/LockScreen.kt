@@ -53,7 +53,7 @@ fun LockScreen(appState: AppState, host: NavHostController,
                 ),
             onClick = {
                 host.navigate(Routes.Recognise.path)
-            Log.i("LOCKTESTE", "testando")}) {
+                Log.i("LOCKTESTE", "testando")}) {
             Icon(imageVector = Icons.Default.Lock, contentDescription = "Lock", Modifier.size(180.dp), MaterialTheme.colorScheme.primary) // Substitua por seu ícone
         }
     }
